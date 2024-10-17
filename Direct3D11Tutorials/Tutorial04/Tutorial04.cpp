@@ -63,6 +63,7 @@ ID3D11Buffer*           g_pConstantBuffer = nullptr;
 XMMATRIX                g_World;
 XMMATRIX                g_View;
 XMMATRIX                g_Projection;
+ID3D11RasterizerState* m_rasterState;
 
 
 //--------------------------------------------------------------------------------------
@@ -401,12 +402,32 @@ HRESULT InitDevice()
     {
         { XMFLOAT3( -1.0f, 1.0f, -1.0f ), XMFLOAT4( 0.0f, 0.0f, 1.0f, 1.0f ) },
         { XMFLOAT3( 1.0f, 1.0f, -1.0f ), XMFLOAT4( 0.0f, 1.0f, 0.0f, 1.0f ) },
+		{ XMFLOAT3(1.5f, 1.0f, -0.5f), XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f) },
         { XMFLOAT3( 1.0f, 1.0f, 1.0f ), XMFLOAT4( 0.0f, 1.0f, 1.0f, 1.0f ) },
         { XMFLOAT3( -1.0f, 1.0f, 1.0f ), XMFLOAT4( 1.0f, 0.0f, 0.0f, 1.0f ) },
+        { XMFLOAT3(-1.5f, 1.0f, 0.5f), XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f) },
+
         { XMFLOAT3( -1.0f, -1.0f, -1.0f ), XMFLOAT4( 1.0f, 0.0f, 1.0f, 1.0f ) },
         { XMFLOAT3( 1.0f, -1.0f, -1.0f ), XMFLOAT4( 1.0f, 1.0f, 0.0f, 1.0f ) },
+        { XMFLOAT3(1.5f, -1.0f, -0.5f), XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f) },
         { XMFLOAT3( 1.0f, -1.0f, 1.0f ), XMFLOAT4( 1.0f, 1.0f, 1.0f, 1.0f ) },
         { XMFLOAT3( -1.0f, -1.0f, 1.0f ), XMFLOAT4( 0.0f, 0.0f, 0.0f, 1.0f ) },
+        { XMFLOAT3(-1.5f, -1.0f, 0.5f), XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f) },
+
+        //{ XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) }, // V0
+        //{ XMFLOAT3(0.866f, 0.5f, 1.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) }, // V1
+        //{ XMFLOAT3(0.866f, -0.5f, 1.0f), XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f) }, // V2
+        //{ XMFLOAT3(0.0f, -1.0f, 1.0f), XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) }, // V3
+        //{ XMFLOAT3(-0.866f, -0.5f, 1.0f), XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f) }, // V4
+        //{ XMFLOAT3(-0.866f, 0.5f, 1.0f), XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f) }, // V5
+
+        //// Bottom face (z = -1)
+        //{ XMFLOAT3(0.0f, 1.0f, -1.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) }, // V6
+        //{ XMFLOAT3(0.866f, 0.5f, -1.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) }, // V7
+        //{ XMFLOAT3(0.866f, -0.5f, -1.0f), XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f) }, // V8
+        //{ XMFLOAT3(0.0f, -1.0f, -1.0f), XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) }, // V9
+        //{ XMFLOAT3(-0.866f, -0.5f, -1.0f), XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f) }, // V10
+        //{ XMFLOAT3(-0.866f, 0.5f, -1.0f), XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f) }, // V11
     };
     D3D11_BUFFER_DESC bd = {};
     bd.Usage = D3D11_USAGE_DEFAULT;
@@ -428,24 +449,77 @@ HRESULT InitDevice()
     // Create index buffer
     WORD indices[] =
     {
-        3,1,0,
-        2,1,3,
+        ///*3,1,0,
+        //2,1,3,
 
-        0,5,4,
-        1,5,0,
+        //0,5,4,
+        //1,5,0,
 
-        3,4,7,
-        0,4,3,
+        //3,4,7,
+        //0,4,3,
 
-        1,6,5,
-        2,6,1,
+        //1,6,5,
+        //2,6,1,
 
-        2,7,6,
-        3,7,2,
+        //2,7,6,
+        //3,7,2,
 
-        6,4,5,
-        7,4,6,
+        //6,4,5,
+        //7,4,6,*/
+
+        //0,1,3,
+        //3,2,1,
+        //1,5,2,
+        //2,6,5,
+        //5,4,1,
+        //1,0,4,
+        //4,0,3,
+        //3,7,4,
+        //4,5,7,
+        //7,5,6,
+        //6,2,3,
+        //3,7,6,
+
+        0, 1, 2,
+        0, 2, 3,
+        0, 3, 4,
+        0, 4, 5,
+
+        // Bottom face
+        6, 7, 8,
+        6, 8, 9,
+        6, 9, 10,
+        6, 10, 11,
+
+        // Side faces
+        0, 1, 6,
+        1, 7, 6,
+        1, 2, 7,
+        2, 8, 7,
+        2, 3, 8,
+        3, 9, 8,
+        3, 4, 9,
+        4, 10, 9,
+        4, 5, 10,
+        5, 11, 10,
+        5, 0, 11,
+        0, 6, 11,
+
     };
+
+    D3D11_RASTERIZER_DESC rasterDesc;
+	rasterDesc.CullMode = D3D11_CULL_NONE;
+	rasterDesc.FillMode = D3D11_FILL_WIREFRAME;
+	rasterDesc.ScissorEnable = false;
+	rasterDesc.DepthClipEnable = true;
+	rasterDesc.DepthBias = 0;
+	rasterDesc.DepthBiasClamp = 0.0f;
+	rasterDesc.SlopeScaledDepthBias = 0.0f;
+	rasterDesc.MultisampleEnable = false;
+
+	hr = g_pd3dDevice->CreateRasterizerState(&rasterDesc, &m_rasterState);
+	g_pImmediateContext->RSSetState(m_rasterState);
+
     bd.Usage = D3D11_USAGE_DEFAULT;
     bd.ByteWidth = sizeof( WORD ) * 36;        // 36 vertices needed for 12 triangles in a triangle list
     bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
@@ -474,7 +548,7 @@ HRESULT InitDevice()
 	g_World = XMMatrixIdentity();
 
     // Initialize the view matrix
-	XMVECTOR Eye = XMVectorSet( 0.0f, 1.0f, -5.0f, 0.0f );
+	XMVECTOR Eye = XMVectorSet( 0.0f, 2.5f, -5.0f, 0.0f );
 	XMVECTOR At = XMVectorSet( 0.0f, 1.0f, 0.0f, 0.0f );
 	XMVECTOR Up = XMVectorSet( 0.0f, 1.0f, 0.0f, 0.0f );
 	g_View = XMMatrixLookAtLH( Eye, At, Up );
