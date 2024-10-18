@@ -65,7 +65,8 @@ XMMATRIX                g_World;
 XMMATRIX                g_View;
 XMMATRIX                g_Projection;
 
-std::vector<WORD>       g_indices;
+std::vector<WORD> indices;
+
 //--------------------------------------------------------------------------------------
 // Forward declarations
 //--------------------------------------------------------------------------------------
@@ -139,7 +140,7 @@ HRESULT InitWindow(HINSTANCE hInstance, int nCmdShow)
 
     // Create window
     g_hInst = hInstance;
-    RECT rc = { 0, 0, 800, 600 };
+    RECT rc = { 0, 0, 1000, 1000 };
     AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
     g_hWnd = CreateWindow(L"TutorialWindowClass", L"Direct3D 11 Tutorial 4: 3D Spaces",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
@@ -192,84 +193,7 @@ HRESULT CompileShaderFromFile(const WCHAR* szFileName, LPCSTR szEntryPoint, LPCS
     return S_OK;
 }
 
-#include <vector>
-#include <cmath>
-#include <directxmath.h>
 
-using namespace DirectX;
-
-// Define the vertices for a hexagonal cylinder
-std::vector<SimpleVertex> CreateHexagonalCylinderVertices(float radius, float height) {
-    std::vector<SimpleVertex> vertices;
-    const int sides = 6;
-    const float angleStep = XM_2PI / sides;
-
-    // Top center vertex
-    vertices.push_back({ XMFLOAT3(0.0f, height / 2, 0.0f), XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) });
-
-    // Top vertices
-    for (int i = 0; i < sides; ++i) {
-        float angle = i * angleStep;
-        float x = radius * cosf(angle);
-        float z = radius * sinf(angle);
-        vertices.push_back({ XMFLOAT3(x, height / 2, z), XMFLOAT4(0.0f, 2.0f, 0.0f, 1.0f) });
-    }
-
-    // Bottom center vertex
-    vertices.push_back({ XMFLOAT3(0.0f, -height / 2, 0.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) });
-
-    // Bottom vertices
-    for (int i = 0; i < sides; ++i) {
-        float angle = i * angleStep;
-        float x = radius * cosf(angle);
-        float z = radius * sinf(angle);
-        vertices.push_back({ XMFLOAT3(x, -height / 2, z), XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f) });
-    }
-
-    return vertices;
-}
-
-// Define the indices for a hexagonal cylinder
-std::vector<WORD> CreateHexagonalCylinderIndices() {
-    std::vector<WORD> indices;
-    const int sides = 6;
-
-    // Indices for the top face
-    for (int i = 0; i < sides; ++i) {
-        indices.push_back(0); // Top center
-        indices.push_back(1 + (i + 1) % sides); // Next top vertex
-        indices.push_back(1 + i); // Current top vertex
-    }
-
-    // Indices for the bottom face
-    for (int i = 0; i < sides; ++i) {
-        indices.push_back(sides + 1); // Bottom center
-        indices.push_back(sides + 2 + i); // Current bottom vertex
-        indices.push_back(sides + 2 + (i + 1) % sides); // Next bottom vertex
-    }
-
-    // Indices for side faces
-    for (int i = 0; i < sides; ++i) {
-        int top1 = 1 + i;
-        int top2 = 1 + (i + 1) % sides;
-        int bottom1 = sides + 2 + i;
-        int bottom2 = sides + 2 + (i + 1) % sides;
-
-        // First triangle
-        indices.push_back(top1);
-        indices.push_back(bottom1);
-        indices.push_back(top2);
-
-        // Second triangle
-        indices.push_back(top2);
-        indices.push_back(bottom1);
-        indices.push_back(bottom2);
-
-
-    }
-
-    return indices;
-}
 //--------------------------------------------------------------------------------------
 // Create Direct3D device and swap chain
 //--------------------------------------------------------------------------------------
@@ -474,21 +398,22 @@ HRESULT InitDevice()
     if (FAILED(hr))
         return hr;
 
+    //--------------------------------------------------------------------------------------
     // Create vertex buffer
-    std::vector<SimpleVertex> vertices = CreateHexagonalCylinderVertices(1.0f, 2.0f);
-    /*{
-        { XMFLOAT3( -1.0f, 1.0f, -1.0f ), XMFLOAT4( 0.0f, 0.0f, 1.0f, 1.0f ) },
-        { XMFLOAT3( 1.0f, 1.0f, -1.0f ), XMFLOAT4( 0.0f, 1.0f, 0.0f, 1.0f ) },
-        { XMFLOAT3( 1.0f, 1.0f, 1.0f ), XMFLOAT4( 0.0f, 1.0f, 1.0f, 1.0f ) },
-        { XMFLOAT3( -1.0f, 1.0f, 1.0f ), XMFLOAT4( 1.0f, 0.0f, 0.0f, 1.0f ) },
-        { XMFLOAT3( -1.0f, -1.0f, -1.0f ), XMFLOAT4( 1.0f, 0.0f, 1.0f, 1.0f ) },
-        { XMFLOAT3( 1.0f, -1.0f, -1.0f ), XMFLOAT4( 1.0f, 1.0f, 0.0f, 1.0f ) },
-        { XMFLOAT3( 1.0f, -1.0f, 1.0f ), XMFLOAT4( 1.0f, 1.0f, 1.0f, 1.0f ) },
-        { XMFLOAT3( -1.0f, -1.0f, 1.0f ), XMFLOAT4( 0.0f, 0.0f, 0.0f, 1.0f ) },
-    };*/
+    const int gridSize = 15;
+    const float gridSpacing = 1.0f;
+    std::vector<SimpleVertex> vertices;
+    for (int i = -gridSize; i <= gridSize; ++i)
+    {
+        for (int j = -gridSize; j <= gridSize; ++j)
+        {
+            vertices.push_back({ XMFLOAT3(i * gridSpacing, 0.0f, j * gridSpacing), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) });
+        }
+    }
+
     D3D11_BUFFER_DESC bd = {};
     bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(SimpleVertex) * 14;
+    bd.ByteWidth = sizeof(SimpleVertex) * vertices.size();
     bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     bd.CPUAccessFlags = 0;
 
@@ -504,66 +429,42 @@ HRESULT InitDevice()
     g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
 
     // Create index buffer
-    std::vector<WORD> indices = CreateHexagonalCylinderIndices();
-    g_indices = indices;
+    for (int i = 0; i < gridSize * 2 + 1; ++i)
+    {
+        for (int j = 0; j < gridSize * 2; ++j)
+        {
+            indices.push_back(i * (gridSize * 2 + 1) + j);
+            indices.push_back(i * (gridSize * 2 + 1) + j + 1);
 
+        }
+    }
+    for (int i = 0; i < gridSize * 2; ++i)
+    {
+        for (int j = 0; j < gridSize * 2 + 1; ++j)
+        {
+            indices.push_back(i * (gridSize * 2 + 1) + j);
+            indices.push_back((i + 1) * (gridSize * 2 + 1) + j);
+        }
 
-    //  {
-    //      // Bottom face
-    //      0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0, 5, 1,
-    //      // Top face
-    //      6, 7, 8, 6, 8, 9, 6, 9, 10, 6, 10, 11, 6, 11, 7,
-    //      // Side faces
-    //      0, 1, 6, 1, 7, 6,
-    //      1, 2, 7, 2, 8, 7,
-    //      2, 3, 8, 3, 9, 8,
-    //      3, 4, 9, 4, 10, 9,
-    //      4, 5, 10, 5, 11, 10,
-    //      5, 0, 11, 0, 6, 11
+    }
 
-    //      
-    //      /*0,1,3,
-    //      3,2,1,
-    //      1,5,2,
-    //      2,6,5,
+    // Add indices for the line going through every cube
+    for (int i = 0; i < gridSize * 2; ++i)
+    {
+        for (int j = 0; j < gridSize * 2; ++j)
+        {
+            // Diagonal line of the square (top-left to bottom-right)
+            indices.push_back(i * (gridSize * 2 + 1) + j);
+            indices.push_back((i + 1) * (gridSize * 2 + 1) + j + 1);
 
-    //      5,4,1,
-    //      1,0,4,
-    //      4,0,3,
-          //3,7,4,
-
-    //      4,5,7,
-    //      7,5,6,
-    //      6,2,3,
-          //3,7,6,*/
-    //  };
-    ID3D11RasterizerState* m_rasterState = 0;
-    D3D11_RASTERIZER_DESC rasterDesc;
-    rasterDesc.CullMode = D3D11_CULL_NONE;
-    rasterDesc.FillMode = D3D11_FILL_WIREFRAME;
-    rasterDesc.ScissorEnable = false;
-    rasterDesc.DepthBias = 0;
-    rasterDesc.DepthBiasClamp = 0.0f;
-    rasterDesc.DepthClipEnable = true;
-    rasterDesc.MultisampleEnable = false;
-    rasterDesc.SlopeScaledDepthBias = 0.0f;
-
-    hr = g_pd3dDevice->CreateRasterizerState(&rasterDesc, &m_rasterState);
-
-    g_pImmediateContext->RSSetState(m_rasterState);
-    //   bd.Usage = D3D11_USAGE_DEFAULT;
-       ////CHANGED FOR THE EXCERSIE 3, 12 LINES IS 24 VERTICES
-    //   //bd.ByteWidth = sizeof( WORD ) * 36;        // 36 vertices needed for 12 triangles in a triangle list
-       //bd.ByteWidth = sizeof(SimpleVertex) * vertices.size();
-    //   bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-       //bd.CPUAccessFlags = 0;
-    //   InitData.pSysMem = indices.data();
-    //   hr = g_pd3dDevice->CreateBuffer( &bd, &InitData, &g_pIndexBuffer );
-    //   if( FAILED( hr ) )
-       //return hr;
+            // Diagonal line of the square (top-right to bottom-left)
+            //indices.push_back(i * (gridSize * 2 + 1) + j + 1);
+           // indices.push_back((i + 1) * (gridSize * 2 + 1) + j);
+        }
+    }
 
     bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(WORD) * 72;
+    bd.ByteWidth = sizeof(WORD) * indices.size();
     bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
     bd.CPUAccessFlags = 0;
     InitData.pSysMem = indices.data();
@@ -571,13 +472,23 @@ HRESULT InitDevice()
     if (FAILED(hr))
         return hr;
 
-
     // Set index buffer
     g_pImmediateContext->IASetIndexBuffer(g_pIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
     // Set primitive topology
-    g_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    g_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 
+    // Create rasterizer state for wireframe
+    D3D11_RASTERIZER_DESC rasterDesc;
+    ZeroMemory(&rasterDesc, sizeof(D3D11_RASTERIZER_DESC));
+    rasterDesc.FillMode = D3D11_FILL_WIREFRAME;
+    rasterDesc.CullMode = D3D11_CULL_BACK;
+    ID3D11RasterizerState* wireframeRS;
+    hr = g_pd3dDevice->CreateRasterizerState(&rasterDesc, &wireframeRS);
+    if (FAILED(hr))
+        return hr;
+
+    g_pImmediateContext->RSSetState(wireframeRS);
     // Create the constant buffer
     bd.Usage = D3D11_USAGE_DEFAULT;
     bd.ByteWidth = sizeof(ConstantBuffer);
@@ -591,7 +502,7 @@ HRESULT InitDevice()
     g_World = XMMatrixIdentity();
 
     // Initialize the view matrix
-    XMVECTOR Eye = XMVectorSet(0.0f, 2.5f, -5.0f, 0.0f);
+    XMVECTOR Eye = XMVectorSet(0.0f, 20.0f, -1.0f, 0.0f);
     XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     g_View = XMMatrixLookAtLH(Eye, At, Up);
@@ -673,13 +584,13 @@ void Render()
         ULONGLONG timeCur = GetTickCount64();
         if (timeStart == 0)
             timeStart = timeCur;
-        t = (timeCur - timeStart) / 10000.0f;
+        t = (timeCur - timeStart) / 1000.0f;
     }
 
     //
     // Animate the cube
     //
-    g_World = XMMatrixRotationY(t);
+    g_World = XMMatrixRotationY(0.5f);
 
     //
     // Clear the back buffer
@@ -690,9 +601,6 @@ void Render()
     // Update variables
     //
     ConstantBuffer cb;
-
-    g_World *= XMMatrixTranslation(0.0f, 0.0f, 0.0f);
-
     cb.mWorld = XMMatrixTranspose(g_World);
     cb.mView = XMMatrixTranspose(g_View);
     cb.mProjection = XMMatrixTranspose(g_Projection);
@@ -704,18 +612,7 @@ void Render()
     g_pImmediateContext->VSSetShader(g_pVertexShader, nullptr, 0);
     g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
     g_pImmediateContext->PSSetShader(g_pPixelShader, nullptr, 0);
-    g_pImmediateContext->DrawIndexed(72, 0, 0);        // 36 vertices needed for 12 triangles in a triangle list
-
-    // g_indices.size()
-    //// Set up the world matrix for the second cube
-    //g_World = XMMatrixIdentity();
-    //g_World *= XMMatrixTranslation(-2.8f, 0.0f, 0.0f); // Position of the second cube
-
-    //cb.mWorld = XMMatrixTranspose(g_World);
-    //g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, nullptr, &cb, 0, 0);
-
-    //// Render the second cube
-    //g_pImmediateContext->DrawIndexed(36, 0, 0); // Draw the second cube
+    g_pImmediateContext->DrawIndexed(indices.size(), 0, 0);        // 36 vertices needed for 12 triangles in a triangle list
 
     //
     // Present our back buffer to our front buffer
