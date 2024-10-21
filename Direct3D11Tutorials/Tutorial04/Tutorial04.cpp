@@ -106,7 +106,9 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
         }
         else
         {
+			
             Render();
+            //RenderMeshSphere();
         }
     }
 
@@ -402,12 +404,18 @@ HRESULT InitDevice()
     // Create vertex buffer
     const int gridSize = 15;
     const float gridSpacing = 1.0f;
+	float random = 0.0f;
     std::vector<SimpleVertex> vertices;
     for (int i = -gridSize; i <= gridSize; ++i)
     {
         for (int j = -gridSize; j <= gridSize; ++j)
         {
-            vertices.push_back({ XMFLOAT3(i * gridSpacing, 0.0f, j * gridSpacing), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) });
+			// Add some random height to the vertices
+			random = (rand() % 100) / 100.0f;
+			if (random > 0.5f)
+				vertices.push_back({ XMFLOAT3(i * gridSpacing, 1.0f, j * gridSpacing), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) });
+			else
+                vertices.push_back({ XMFLOAT3(i * gridSpacing, 0.0f, j * gridSpacing), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) });
         }
     }
 
@@ -514,6 +522,8 @@ HRESULT InitDevice()
 }
 
 
+
+
 //--------------------------------------------------------------------------------------
 // Clean up the objects we've created
 //--------------------------------------------------------------------------------------
@@ -566,6 +576,51 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
+//--------------------------------------------------------------------------------------
+// Render a mesh sphere
+//--------------------------------------------------------------------------------------
+void RenderMeshSphere()
+{
+    // Set vertex buffer
+    UINT stride = sizeof(SimpleVertex);
+    UINT offset = 0;
+    g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
+
+    // Set index buffer
+    g_pImmediateContext->IASetIndexBuffer(g_pIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+
+    // Set primitive topology
+    g_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    // Set the vertex shader
+    g_pImmediateContext->VSSetShader(g_pVertexShader, nullptr, 0);
+
+    // Set the pixel shader
+    g_pImmediateContext->PSSetShader(g_pPixelShader, nullptr, 0);
+
+    // Set the input layout
+    g_pImmediateContext->IASetInputLayout(g_pVertexLayout);
+
+    // Set the constant buffer
+    g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
+
+    // Set the render target view
+    g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, nullptr);
+
+    // Clear the render target view
+    g_pImmediateContext->ClearRenderTargetView(g_pRenderTargetView, Colors::CornflowerBlue);
+
+    // Set the world matrix
+    ConstantBuffer cb;
+    cb.mWorld = XMMatrixTranspose(g_World);
+    cb.mView = XMMatrixTranspose(g_View);
+    cb.mProjection = XMMatrixTranspose(g_Projection);
+    g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, nullptr, &cb, 0, 0);
+
+    // Draw the mesh sphere
+    g_pImmediateContext->DrawIndexed(indices.size(), 0, 0);
+}
+
 
 //--------------------------------------------------------------------------------------
 // Render a frame
@@ -614,8 +669,11 @@ void Render()
     g_pImmediateContext->PSSetShader(g_pPixelShader, nullptr, 0);
     g_pImmediateContext->DrawIndexed(indices.size(), 0, 0);        // 36 vertices needed for 12 triangles in a triangle list
 
+
     //
     // Present our back buffer to our front buffer
     //
     g_pSwapChain->Present(0, 0);
+
 }
+
