@@ -14,6 +14,7 @@
 // Licensed under the MIT License (MIT).
 //--------------------------------------------------------------------------------------
 
+
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -408,7 +409,7 @@ HRESULT InitDevice()
         return hr;
 
     Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile("C:\\Users\\660892\\OneDrive - hull.ac.uk\\Downloads\\Teapot.obj", aiProcess_Triangulate);
+    const aiScene* scene = importer.ReadFile("Teapot.obj", aiProcess_Triangulate);
 
     aiMesh* teapotMesh = scene->mMeshes[0];
 
