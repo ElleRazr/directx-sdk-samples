@@ -13,20 +13,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License (MIT).
 //--------------------------------------------------------------------------------------
-
-
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
-
 #include <windows.h>
 #include <d3d11_1.h>
 #include <d3dcompiler.h>
 #include <directxmath.h>
 #include <directxcolors.h>
 #include "resource.h"
-#include <vector>
-
 
 using namespace DirectX;
 
@@ -72,9 +64,7 @@ XMMATRIX                g_World;
 XMMATRIX                g_View;
 XMMATRIX                g_Projection;
 
-//std::vector<WORD> indices;
-std::vector<SimpleVertex>vertices;
-std::vector<WORD>indices;
+
 //--------------------------------------------------------------------------------------
 // Forward declarations
 //--------------------------------------------------------------------------------------
@@ -114,9 +104,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
         }
         else
         {
-			
             Render();
-            //RenderMeshSphere();
         }
     }
 
@@ -150,7 +138,7 @@ HRESULT InitWindow(HINSTANCE hInstance, int nCmdShow)
 
     // Create window
     g_hInst = hInstance;
-    RECT rc = { 0, 0, 1000, 1000 };
+    RECT rc = { 0, 0, 800, 600 };
     AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
     g_hWnd = CreateWindow(L"TutorialWindowClass", L"Direct3D 11 Tutorial 4: 3D Spaces",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
@@ -408,132 +396,123 @@ HRESULT InitDevice()
     if (FAILED(hr))
         return hr;
 
-    Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile("Teapot.obj", aiProcess_Triangulate);
-
-    aiMesh* teapotMesh = scene->mMeshes[0];
-
-    
-    for (UINT i = 0; i < teapotMesh->mNumVertices; i++)
-    {
-        SimpleVertex vertex;
-        vertex.Pos.x = teapotMesh->mVertices[i].x;
-        vertex.Pos.y = teapotMesh->mVertices[i].y;
-        vertex.Pos.z = teapotMesh->mVertices[i].z;
-		vertex.Color.x = 1.0f;
-        vertices.push_back(vertex);
-    }
-
-    //--------------------------------------------------------------------------------------
     // Create vertex buffer
- //   const int gridSize = 15;
- //   const float gridSpacing = 1.0f;
-	//float random = 0.0f;
- //   std::vector<SimpleVertex> vertices;
- //   for (int i = -gridSize; i <= gridSize; ++i)
- //   {
- //       for (int j = -gridSize; j <= gridSize; ++j)
- //       {
-	//		// Add some random height to the vertices
-	//		random = (rand() % 100) / 100.0f;
-	//		if (random > 0.5f)
-	//			vertices.push_back({ XMFLOAT3(i * gridSpacing, 1.0f, j * gridSpacing), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) });
-	//		else
- //               vertices.push_back({ XMFLOAT3(i * gridSpacing, 0.0f, j * gridSpacing), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) });
- //       }
- //   }
-
+    SimpleVertex vertices[] =
+    {
+        { XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) },
+        { XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) },
+        { XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f) },
+        { XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) },
+        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f) },
+        { XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f) },
+        { XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) },
+        { XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f) },
+    };
     D3D11_BUFFER_DESC bd = {};
     bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(SimpleVertex) * vertices.size();
+    bd.ByteWidth = sizeof(SimpleVertex) * 8;
     bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     bd.CPUAccessFlags = 0;
 
     D3D11_SUBRESOURCE_DATA InitData = {};
-    InitData.pSysMem = vertices.data();
+    InitData.pSysMem = vertices;
     hr = g_pd3dDevice->CreateBuffer(&bd, &InitData, &g_pVertexBuffer);
     if (FAILED(hr))
         return hr;
 
     // Set vertex buffer
-   /* UINT stride = sizeof(SimpleVertex);
+    UINT stride = sizeof(SimpleVertex);
     UINT offset = 0;
-    g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);*/
+    g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
 
-    bd.ByteWidth = sizeof(SimpleVertex) * vertices.size();
-    InitData.pSysMem = vertices.data();
-
-    //need to include <vector> header
-    for (UINT i = 0; i < teapotMesh->mNumFaces; i++)
+    // Create index buffer
+    WORD indices[] =
     {
-        aiFace face = teapotMesh->mFaces[i];
-        for (UINT j = 0; j < face.mNumIndices; j++)
-            indices.push_back(face.mIndices[j]);
-    }
+        /*0,1,3,2,
+        4,5,6,7,
+        0,3,4,7,
+        1,2,5,6,
+        3,2,7,6,
+        0,1,4,5,*/
 
-    //// Create index buffer
-    //for (int i = 0; i < gridSize * 2 + 1; ++i)
-    //{
-    //    for (int j = 0; j < gridSize * 2; ++j)
-    //    {
-    //        indices.push_back(i * (gridSize * 2 + 1) + j);
-    //        indices.push_back(i * (gridSize * 2 + 1) + j + 1);
+        /*0,1,
+        1,2,
+        2,3,
+        3,0,
 
-    //    }
-    //}
-    //for (int i = 0; i < gridSize * 2; ++i)
-    //{
-    //    for (int j = 0; j < gridSize * 2 + 1; ++j)
-    //    {
-    //        indices.push_back(i * (gridSize * 2 + 1) + j);
-    //        indices.push_back((i + 1) * (gridSize * 2 + 1) + j);
-    //    }
+        0,4,
+        3,7,
+        2,6,
+        1,5,
 
-    //}
+        4,5,
+        5,6,
+        6,7,
+        7,4,*/
 
-    // Add indices for the line going through every cube
-    //for (int i = 0; i < gridSize * 2; ++i)
-    //{
-    //    for (int j = 0; j < gridSize * 2; ++j)
-    //    {
-    //        // Diagonal line of the square (top-left to bottom-right)
-    //        indices.push_back(i * (gridSize * 2 + 1) + j);
-    //        indices.push_back((i + 1) * (gridSize * 2 + 1) + j + 1);
+        3,1,0,
+        2,1,3,
 
-    //        // Diagonal line of the square (top-right to bottom-left)
-    //        //indices.push_back(i * (gridSize * 2 + 1) + j + 1);
-    //       // indices.push_back((i + 1) * (gridSize * 2 + 1) + j);
-    //    }
-    //}
+        0,5,4,
+        1,5,0,
 
+        3,4,7,
+        0,4,3,
+
+        1,6,5,
+        2,6,1,
+
+        2,7,6,
+        3,7,2,
+
+        6,4,5,
+        7,4,6,
+
+        /*  0,1,3,
+          3,2,1,
+          1,5,2,
+          2,6,5,
+
+          5,4,1,
+          1,0,4,
+          4,0,3,
+          3,7,4,
+
+          4,5,7,
+          7,5,6,
+          6,2,3,
+          3,7,6,*/
+    };
+    ID3D11RasterizerState* m_rasterState = 0;
+    D3D11_RASTERIZER_DESC rasterDesc;
+    rasterDesc.CullMode = D3D11_CULL_FRONT;
+    rasterDesc.FillMode = D3D11_FILL_SOLID;
+    rasterDesc.ScissorEnable = false;
+    rasterDesc.DepthBias = 0;
+    rasterDesc.DepthBiasClamp = 0.0f;
+    rasterDesc.DepthClipEnable = true;
+    rasterDesc.MultisampleEnable = false;
+    rasterDesc.SlopeScaledDepthBias = 0.0f;
+
+    hr = g_pd3dDevice->CreateRasterizerState(&rasterDesc, &m_rasterState);
+
+    g_pImmediateContext->RSSetState(m_rasterState);
     bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(WORD) * indices.size();
+    //CHANGED FOR THE EXCERSIE 3, 12 LINES IS 24 VERTICES
+    bd.ByteWidth = sizeof(WORD) * 36;        // 36 vertices needed for 12 triangles in a triangle list
     bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
     bd.CPUAccessFlags = 0;
-    InitData.pSysMem = indices.data();
+    InitData.pSysMem = indices;
     hr = g_pd3dDevice->CreateBuffer(&bd, &InitData, &g_pIndexBuffer);
     if (FAILED(hr))
         return hr;
 
     // Set index buffer
-    //g_pImmediateContext->IASetIndexBuffer(g_pIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
-    bd.ByteWidth = sizeof(SimpleVertex) * indices.size();
-    InitData.pSysMem = indices.data();
+    g_pImmediateContext->IASetIndexBuffer(g_pIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
     // Set primitive topology
     g_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-    // Create rasterizer state for wireframe
-    D3D11_RASTERIZER_DESC rasterDesc;
-    ZeroMemory(&rasterDesc, sizeof(D3D11_RASTERIZER_DESC));
-    rasterDesc.FillMode = D3D11_FILL_WIREFRAME;
-    rasterDesc.CullMode = D3D11_CULL_BACK;
-    ID3D11RasterizerState* wireframeRS;
-    hr = g_pd3dDevice->CreateRasterizerState(&rasterDesc, &wireframeRS);
-    if (FAILED(hr))
-        return hr;
-
-    g_pImmediateContext->RSSetState(wireframeRS);
     // Create the constant buffer
     bd.Usage = D3D11_USAGE_DEFAULT;
     bd.ByteWidth = sizeof(ConstantBuffer);
@@ -543,12 +522,11 @@ HRESULT InitDevice()
     if (FAILED(hr))
         return hr;
 
-    // Initialize the world matrix
-    g_World = XMMatrixIdentity();
+
 
     // Initialize the view matrix
-    XMVECTOR Eye = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-    XMVECTOR At = XMVectorSet(0.0f, 2.0f, 5.0f, 0.0f);
+    XMVECTOR Eye = XMVectorSet(2.0f, 2.5f, -3.0f, 0.0f);
+    XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     g_View = XMMatrixLookAtLH(Eye, At, Up);
 
@@ -557,8 +535,6 @@ HRESULT InitDevice()
 
     return S_OK;
 }
-
-
 
 
 //--------------------------------------------------------------------------------------
@@ -613,77 +589,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-//--------------------------------------------------------------------------------------
-// Render a mesh sphere
-//--------------------------------------------------------------------------------------
-//void RenderMeshSphere()
-//{
-//    // Set vertex buffer
-//    UINT stride = sizeof(SimpleVertex);
-//    UINT offset = 0;
-//    g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
-//
-//    // Set index buffer
-//    g_pImmediateContext->IASetIndexBuffer(g_pIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
-//
-//    // Set primitive topology
-//    g_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-//
-//    // Set the vertex shader
-//    g_pImmediateContext->VSSetShader(g_pVertexShader, nullptr, 0);
-//
-//    // Set the pixel shader
-//    g_pImmediateContext->PSSetShader(g_pPixelShader, nullptr, 0);
-//
-//    // Set the input layout
-//    g_pImmediateContext->IASetInputLayout(g_pVertexLayout);
-//
-//    // Set the constant buffer
-//    g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
-//
-//    // Set the render target view
-//    g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, nullptr);
-//
-//    // Clear the render target view
-//    g_pImmediateContext->ClearRenderTargetView(g_pRenderTargetView, Colors::CornflowerBlue);
-//
-//    // Set the world matrix
-//    ConstantBuffer cb;
-//    cb.mWorld = XMMatrixTranspose(g_World);
-//    cb.mView = XMMatrixTranspose(g_View);
-//    cb.mProjection = XMMatrixTranspose(g_Projection);
-//    g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, nullptr, &cb, 0, 0);
-//
-//    // Draw the mesh sphere
-//    g_pImmediateContext->DrawIndexed(indices.size(), 0, 0);
-//}
-
-//void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
-//{
-//    UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-//
-//    auto objectCB = mCurrFrameResource->ObjectCB->Resource();
-//
-//    // For each render item...
-//    for (size_t i = 0; i < ritems.size(); ++i)
-//    {
-//        auto ri = ritems[i];
-//
-//        cmdList->IASetVertexBuffers(0, 1, &ri->Geo->VertexBufferView());
-//        cmdList->IASetIndexBuffer(&ri->Geo->IndexBufferView());
-//        cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
-//
-//        // Offset to the CBV in the descriptor heap for this object and for this frame resource.
-//        UINT cbvIndex = mCurrFrameResourceIndex * (UINT)mOpaqueRitems.size() + ri->ObjCBIndex;
-//        auto cbvHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(mCbvHeap->GetGPUDescriptorHandleForHeapStart());
-//        cbvHandle.Offset(cbvIndex, mCbvSrvUavDescriptorSize);
-//
-//        cmdList->SetGraphicsRootDescriptorTable(0, cbvHandle);
-//
-//        cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
-//    }
-//}
-
 
 //--------------------------------------------------------------------------------------
 // Render a frame
@@ -704,24 +609,27 @@ void Render()
             timeStart = timeCur;
         t = (timeCur - timeStart) / 1000.0f;
     }
-
-    //
     // Animate the cube
-    //
-    g_World = XMMatrixRotationY(0.5f);
+    g_World = XMMatrixRotationY(t);
 
-    //
     // Clear the back buffer
-    //
     g_pImmediateContext->ClearRenderTargetView(g_pRenderTargetView, Colors::MidnightBlue);
 
-    //
     // Update variables
-    //
     ConstantBuffer cb;
+
+    g_World *= XMMatrixTranslation(0.0f, 0.0f, 0.0f);
+
+    // Initialize the world matrix
+    XMMATRIX mScale = XMMatrixScaling(1.0f, 0.1f, 1.0f);
+    g_World = XMMatrixIdentity();
+    g_World *= mScale;
+    cb.mWorld = XMMatrixTranspose(g_World);
+
     cb.mWorld = XMMatrixTranspose(g_World);
     cb.mView = XMMatrixTranspose(g_View);
     cb.mProjection = XMMatrixTranspose(g_Projection);
+
     g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, nullptr, &cb, 0, 0);
 
     //
@@ -730,15 +638,22 @@ void Render()
     g_pImmediateContext->VSSetShader(g_pVertexShader, nullptr, 0);
     g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
     g_pImmediateContext->PSSetShader(g_pPixelShader, nullptr, 0);
-    g_pImmediateContext->DrawIndexed(indices.size(), 0, 0);        // 36 vertices needed for 12 triangles in a triangle list
+    g_pImmediateContext->DrawIndexed(36, 0, 0);        // 36 vertices needed for 12 triangles in a triangle list
 
+
+    //// Set up the world matrix for the second cube
+    //g_World = XMMatrixIdentity();
+    //g_World *= XMMatrixTranslation(-2.8f, 0.0f, 0.0f); // Position of the second cube
+
+    //cb.mWorld = XMMatrixTranspose(g_World);
+    //g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, nullptr, &cb, 0, 0);
+
+    //// Render the second cube
+    //g_pImmediateContext->DrawIndexed(36, 0, 0); // Draw the second cube
 
     //
     // Present our back buffer to our front buffer
     //
     g_pSwapChain->Present(0, 0);
-
 }
-
-
 
