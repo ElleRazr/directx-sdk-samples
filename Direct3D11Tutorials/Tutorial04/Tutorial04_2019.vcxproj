@@ -392,11 +392,9 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="GeometryGenerator.cpp" />
     <ClCompile Include="Tutorial04.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="GeometryGenerator.h" />
     <CLInclude Include="resource.h" />
     <ResourceCompile Include="Tutorial04.rc" />
   </ItemGroup>
