@@ -525,13 +525,49 @@ HRESULT InitDevice()
 
 
     // Initialize the view matrix
+    /*XMVECTOR Eye = XMVectorSet(2.0f, 2.5f, -3.0f, 0.0f);
+    XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    g_View = XMMatrixLookAtLH(Eye, At, Up);*/
+
     XMVECTOR Eye = XMVectorSet(2.0f, 2.5f, -3.0f, 0.0f);
     XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-    g_View = XMMatrixLookAtLH(Eye, At, Up);
+
+    // Calculate forward, right, and corrected up vectors
+    XMVECTOR Forward = XMVector3Normalize(XMVectorSubtract(At, Eye));
+    XMVECTOR Right = XMVector3Normalize(XMVector3Cross(Up, Forward));
+    XMVECTOR UpCorrected = XMVector3Cross(Forward, Right);
+
+    // Define the view matrix directly
+    g_View = XMMatrixSet(
+        XMVectorGetX(Right), XMVectorGetX(UpCorrected), XMVectorGetX(Forward), 0.0f,
+        XMVectorGetY(Right), XMVectorGetY(UpCorrected), XMVectorGetY(Forward), 0.0f,
+        XMVectorGetZ(Right), XMVectorGetZ(UpCorrected), XMVectorGetZ(Forward), 0.0f,
+        -XMVectorGetX(XMVector3Dot(Right, Eye)),
+        -XMVectorGetY(XMVector3Dot(UpCorrected, Eye)),
+        -XMVectorGetZ(XMVector3Dot(Forward, Eye)), 1.0f
+    );
+
+    float fovY = XM_PIDIV2; // 90 degrees field of view
+    float aspectRatio = width / (FLOAT)height;
+    float nearZ = 0.01f;
+    float farZ = 100.0f;
+
+    // Calculate parameters for perspective matrix
+    float f = 1.0f / tanf(fovY / 2.0f);
+    float q = farZ / (farZ - nearZ);
+
+    // Define the projection matrix directly
+    g_Projection = XMMatrixSet(
+        f / aspectRatio, 0.0f, 0.0f, 0.0f,
+        0.0f, f, 0.0f, 0.0f,
+        0.0f, 0.0f, q, 1.0f,
+        0.0f, 0.0f, -nearZ * q, 0.0f
+    );
 
     // Initialize the projection matrix
-    g_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, width / (FLOAT)height, 0.01f, 100.0f);
+    /*g_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, width / (FLOAT)height, 0.01f, 100.0f);*/
 
     return S_OK;
 }

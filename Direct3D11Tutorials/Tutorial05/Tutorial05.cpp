@@ -507,7 +507,7 @@ HRESULT InitDevice()
     g_WorldSpin1 = XMMatrixIdentity();
 
     // Initialize the view matrix
-    XMVECTOR Eye = XMVectorSet(0.0f, 1.0f, -5.0f, 0.0f);
+    XMVECTOR Eye = XMVectorSet(0.0f, 1.0f, -20.0f, 0.0f);
     XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     g_View = XMMatrixLookAtLH(Eye, At, Up);
@@ -594,33 +594,45 @@ void Render()
         t = (timeCur - timeStart) / 1000.0f;
     }
 
-    // 1st standing Cube
-    g_WorldStand1 = XMMatrixRotationY(t);
-    XMMATRIX mScaleStand1 = XMMatrixScaling(0.2f, 2.5f, 0.2f);
-    XMMATRIX mTranslateStand1 = XMMatrixTransformation(g_XMZero, g_XMZero, g_XMOne, g_XMZero, XMQuaternionRotationRollPitchYaw(0.0f, 0.0f, 0.0f), g_XMZero);
-    g_WorldStand1 = mScaleStand1 * mTranslateStand1 * g_WorldStand1;
+    //scale each body
+	XMMATRIX mScaleSun = XMMatrixScaling(4.0f, 4.0f, 4.0f);
+	XMMATRIX mScaleEarth = XMMatrixScaling(1.0f, 1.0f, 1.0f);
+	XMMATRIX mScaleMoon = XMMatrixScaling(0.25f, 0.25f, 0.25f);
 
-    //2nd standing Cube
-    g_WorldStand2 = XMMatrixRotationY(t);
-    XMMATRIX mScaleStand2 = XMMatrixScaling(0.2f, 2.5f, 0.2f);
-    XMMATRIX mTranslateStand2 = XMMatrixTransformation(g_XMZero, g_XMZero, g_XMOne, g_XMZero, XMQuaternionRotationRollPitchYaw(0.0f, 0.0f, 0.0f), g_XMZero);
-    g_WorldStand2 = mScaleStand2 * mTranslateStand2 * g_WorldStand2;
+	XMMATRIX g_WorldSun = mScaleSun; //sun does not orbit
 
-    // 1st spin Cube:  Rotate around origin
-    XMMATRIX mSpin = XMMatrixRotationZ(-t);
-    XMMATRIX mOrbit = XMMatrixRotationY(-t * 2.0f);
-    XMMATRIX mTranslate = XMMatrixTranslation(-4.0f, 0.0f, 0.0f);
-    XMMATRIX mScale = XMMatrixScaling(0.3f, 0.3f, 0.3f);
+	//earth orbit
+	XMMATRIX mOrbitEarth = XMMatrixRotationY(t * 0.5f);
+	XMMATRIX mTranslateEarth = XMMatrixTranslation(10.0f, 0.0f, 0.0f); //distance from sun
+	XMMATRIX g_WorldEarth = mScaleEarth * mTranslateEarth * mOrbitEarth;
 
-    g_WorldSpin1 = mScale * mSpin * mTranslate * mOrbit;
+	//moon orbit
+	XMMATRIX mOrbitMoon = XMMatrixRotationY(t * 2.0f);
+	XMMATRIX mTranslateMoon = XMMatrixTranslation(2.0f, 0.0f, 0.0f); //distance from earth
+	XMMATRIX g_WorldMoon = mScaleMoon * mTranslateMoon * mOrbitMoon * g_WorldEarth;
 
-    //2nd Cube: Rotate around origin
-    XMMATRIX mSpin2 = XMMatrixRotationZ(-t);
-    XMMATRIX mOrbit2 = XMMatrixRotationY(-t * 2.0f);
-    XMMATRIX mTranslate2 = XMMatrixTranslation(4.0f, 0.0f, 0.0f);
-    XMMATRIX mScale2 = XMMatrixScaling(0.3f, 0.3f, 0.3f);
+    
 
-    g_WorldSpin2 = mScale2 * mSpin2 * mTranslate2 * mOrbit2;
+    //// 1st standing oblong
+    //g_WorldStand1 = XMMatrixRotationY(t);
+    //XMMATRIX mScaleStand1 = XMMatrixScaling(0.2f, 2.5f, 0.2f);
+    //XMMATRIX mTranslateStand1 = XMMatrixTranslation(0.0f, 0.0f, 0.0f);
+    //g_WorldStand1 = mScaleStand1 * g_WorldStand1 * mTranslateStand1;
+
+    
+
+    // Calculate the orbit rotation first to position the stick on the circular path
+   /* XMMATRIX mOrbit2 = XMMatrixRotationY(-t * 2.0f);
+     Translate to position it correctly on the orbit
+    XMMATRIX mTranslate2 = XMMatrixTranslation(3.0f, 1.0f, 0.0f);
+     Rotate the stick around the Z-axis so it aligns tangent to the orbit
+    XMMATRIX mTangentAlign = XMMatrixRotationZ(-XM_PIDIV2);
+     Scaling the stick
+    XMMATRIX mScale2 = XMMatrixScaling(0.2f, 0.2f, 2.5f);
+
+     Combine transformations: scaling -> tangent alignment -> translate -> orbit rotation
+    g_WorldSpin2 = mScale2 * mTangentAlign * mTranslate2 * mOrbit2;*/
+
 
     //
     // Clear the back buffer
@@ -636,42 +648,35 @@ void Render()
     // Update variables for the first cube
     //
     ConstantBuffer cb1;
-    cb1.mWorld = XMMatrixTranspose(g_WorldStand1);
+    cb1.mWorld = XMMatrixTranspose(g_WorldSun);
     cb1.mView = XMMatrixTranspose(g_View);
     cb1.mProjection = XMMatrixTranspose(g_Projection);
     g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, nullptr, &cb1, 0, 0);
 
-    //
-    // Render the first standing cube
-    //
     g_pImmediateContext->VSSetShader(g_pVertexShader, nullptr, 0);
     g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
     g_pImmediateContext->PSSetShader(g_pPixelShader, nullptr, 0);
     g_pImmediateContext->DrawIndexed(36, 0, 0);
 
-    //
-    //Render the second standing cube
-    //
-
-    //
-    // Update variables for the second spin cube
+    // Render the first standing cube
     //
     ConstantBuffer cb2;
-    cb2.mWorld = XMMatrixTranspose(g_WorldSpin1);
+    cb2.mWorld = XMMatrixTranspose(g_WorldEarth);
     cb2.mView = XMMatrixTranspose(g_View);
     cb2.mProjection = XMMatrixTranspose(g_Projection);
     g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, nullptr, &cb2, 0, 0);
 
-    //
-    // Render the second spin cube
-    //
+    /*g_pImmediateContext->VSSetShader(g_pVertexShader, nullptr, 0);
+    g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
+    g_pImmediateContext->PSSetShader(g_pPixelShader, nullptr, 0);*/
     g_pImmediateContext->DrawIndexed(36, 0, 0);
+
 
     //
     // Update variables for the third spin cube
     //
     ConstantBuffer cb3;
-    cb3.mWorld = XMMatrixTranspose(g_WorldSpin2);
+    cb3.mWorld = XMMatrixTranspose(g_WorldMoon);
     cb3.mView = XMMatrixTranspose(g_View);
     cb3.mProjection = XMMatrixTranspose(g_Projection);
     g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, nullptr, &cb3, 0, 0);
