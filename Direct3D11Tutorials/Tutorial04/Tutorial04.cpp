@@ -19,6 +19,8 @@
 #include <directxmath.h>
 #include <directxcolors.h>
 #include "resource.h"
+#include <vector>
+#include "GeometryGenerator.h"
 
 using namespace DirectX;
 
@@ -64,6 +66,7 @@ XMMATRIX                g_World;
 XMMATRIX                g_View;
 XMMATRIX                g_Projection;
 
+std::vector<WORD> indices;
 
 //--------------------------------------------------------------------------------------
 // Forward declarations
@@ -396,26 +399,40 @@ HRESULT InitDevice()
     if (FAILED(hr))
         return hr;
 
+    //--------------------------------------------------------------------------------------
     // Create vertex buffer
-    SimpleVertex vertices[] =
+    const int gridSize = 15;
+    const float gridSpacing = 1.0f;
+    float random = 0.0f;
+    std::vector<SimpleVertex> vertices;
+    for (int i = -gridSize; i <= gridSize; ++i)
     {
-        { XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f) },
-        { XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f) },
-        { XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT4(0.0f, 1.0f, 1.0f, 1.0f) },
-        { XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f) },
-        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(1.0f, 0.0f, 1.0f, 1.0f) },
-        { XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f) },
-        { XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) },
-        { XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f) },
-    };
+        for (int j = -gridSize; j <= gridSize; ++j)
+        {
+            //vertices.push_back({ XMFLOAT3(i * gridSpacing, 0.0f, j * gridSpacing), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) });
+
+            // Add some random height to the vertices
+            random = (rand() % 100) / 100.0f;
+            if (random > 0.5f)
+            {
+                vertices.push_back({ XMFLOAT3(i * gridSpacing, 1.0f, j * gridSpacing), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) });
+            }
+            else
+            {
+                vertices.push_back({ XMFLOAT3(i * gridSpacing, 0.0f, j * gridSpacing), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) });
+            }
+
+        }
+    }
+
     D3D11_BUFFER_DESC bd = {};
     bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(SimpleVertex) * 8;
+    bd.ByteWidth = sizeof(SimpleVertex) * vertices.size();
     bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     bd.CPUAccessFlags = 0;
 
     D3D11_SUBRESOURCE_DATA InitData = {};
-    InitData.pSysMem = vertices;
+    InitData.pSysMem = vertices.data();
     hr = g_pd3dDevice->CreateBuffer(&bd, &InitData, &g_pVertexBuffer);
     if (FAILED(hr))
         return hr;
@@ -426,83 +443,45 @@ HRESULT InitDevice()
     g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
 
     // Create index buffer
-    WORD indices[] =
+    for (int i = 0; i < gridSize * 2 + 1; ++i)
     {
-        /*0,1,3,2,
-        4,5,6,7,
-        0,3,4,7,
-        1,2,5,6,
-        3,2,7,6,
-        0,1,4,5,*/
+        for (int j = 0; j < gridSize * 2; ++j)
+        {
+            indices.push_back(i * (gridSize * 2 + 1) + j);
+            indices.push_back(i * (gridSize * 2 + 1) + j + 1);
 
-        /*0,1,
-        1,2,
-        2,3,
-        3,0,
+        }
+    }
+    for (int i = 0; i < gridSize * 2; ++i)
+    {
+        for (int j = 0; j < gridSize * 2 + 1; ++j)
+        {
+            indices.push_back(i * (gridSize * 2 + 1) + j);
+            indices.push_back((i + 1) * (gridSize * 2 + 1) + j);
+        }
 
-        0,4,
-        3,7,
-        2,6,
-        1,5,
+    }
 
-        4,5,
-        5,6,
-        6,7,
-        7,4,*/
+    // Add indices for the line going through every cube
+    for (int i = 0; i < gridSize * 2; ++i)
+    {
+        for (int j = 0; j < gridSize * 2; ++j)
+        {
+            // Diagonal line of the square (top-left to bottom-right)
+            indices.push_back(i * (gridSize * 2 + 1) + j);
+            indices.push_back((i + 1) * (gridSize * 2 + 1) + j + 1);
 
-        3,1,0,
-        2,1,3,
+            // Diagonal line of the square (top-right to bottom-left)
+            indices.push_back(i * (gridSize * 2 + 1) + j + 1);
+            indices.push_back((i + 1) * (gridSize * 2 + 1) + j);
+        }
+    }
 
-        0,5,4,
-        1,5,0,
-
-        3,4,7,
-        0,4,3,
-
-        1,6,5,
-        2,6,1,
-
-        2,7,6,
-        3,7,2,
-
-        6,4,5,
-        7,4,6,
-
-        /*  0,1,3,
-          3,2,1,
-          1,5,2,
-          2,6,5,
-
-          5,4,1,
-          1,0,4,
-          4,0,3,
-          3,7,4,
-
-          4,5,7,
-          7,5,6,
-          6,2,3,
-          3,7,6,*/
-    };
-    ID3D11RasterizerState* m_rasterState = 0;
-    D3D11_RASTERIZER_DESC rasterDesc;
-    rasterDesc.CullMode = D3D11_CULL_FRONT;
-    rasterDesc.FillMode = D3D11_FILL_SOLID;
-    rasterDesc.ScissorEnable = false;
-    rasterDesc.DepthBias = 0;
-    rasterDesc.DepthBiasClamp = 0.0f;
-    rasterDesc.DepthClipEnable = true;
-    rasterDesc.MultisampleEnable = false;
-    rasterDesc.SlopeScaledDepthBias = 0.0f;
-
-    hr = g_pd3dDevice->CreateRasterizerState(&rasterDesc, &m_rasterState);
-
-    g_pImmediateContext->RSSetState(m_rasterState);
     bd.Usage = D3D11_USAGE_DEFAULT;
-    //CHANGED FOR THE EXCERSIE 3, 12 LINES IS 24 VERTICES
-    bd.ByteWidth = sizeof(WORD) * 36;        // 36 vertices needed for 12 triangles in a triangle list
+    bd.ByteWidth = sizeof(WORD) * indices.size();
     bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
     bd.CPUAccessFlags = 0;
-    InitData.pSysMem = indices;
+    InitData.pSysMem = indices.data();
     hr = g_pd3dDevice->CreateBuffer(&bd, &InitData, &g_pIndexBuffer);
     if (FAILED(hr))
         return hr;
@@ -511,8 +490,19 @@ HRESULT InitDevice()
     g_pImmediateContext->IASetIndexBuffer(g_pIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
     // Set primitive topology
-    g_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    g_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 
+    // Create rasterizer state for wireframe
+    D3D11_RASTERIZER_DESC rasterDesc;
+    ZeroMemory(&rasterDesc, sizeof(D3D11_RASTERIZER_DESC));
+    rasterDesc.FillMode = D3D11_FILL_WIREFRAME;
+    rasterDesc.CullMode = D3D11_CULL_BACK;
+    ID3D11RasterizerState* wireframeRS;
+    hr = g_pd3dDevice->CreateRasterizerState(&rasterDesc, &wireframeRS);
+    if (FAILED(hr))
+        return hr;
+
+    g_pImmediateContext->RSSetState(wireframeRS);
     // Create the constant buffer
     bd.Usage = D3D11_USAGE_DEFAULT;
     bd.ByteWidth = sizeof(ConstantBuffer);
@@ -522,52 +512,17 @@ HRESULT InitDevice()
     if (FAILED(hr))
         return hr;
 
-
+    // Initialize the world matrix
+    g_World = XMMatrixIdentity();
 
     // Initialize the view matrix
-    /*XMVECTOR Eye = XMVectorSet(2.0f, 2.5f, -3.0f, 0.0f);
+    XMVECTOR Eye = XMVectorSet(0.0f, 15.0f, -10.0f, 0.0f);
     XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-    g_View = XMMatrixLookAtLH(Eye, At, Up);*/
-
-    XMVECTOR Eye = XMVectorSet(2.0f, 2.5f, -3.0f, 0.0f);
-    XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-    XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-
-    // Calculate forward, right, and corrected up vectors
-    XMVECTOR Forward = XMVector3Normalize(XMVectorSubtract(At, Eye));
-    XMVECTOR Right = XMVector3Normalize(XMVector3Cross(Up, Forward));
-    XMVECTOR UpCorrected = XMVector3Cross(Forward, Right);
-
-    // Define the view matrix directly
-    g_View = XMMatrixSet(
-        XMVectorGetX(Right), XMVectorGetX(UpCorrected), XMVectorGetX(Forward), 0.0f,
-        XMVectorGetY(Right), XMVectorGetY(UpCorrected), XMVectorGetY(Forward), 0.0f,
-        XMVectorGetZ(Right), XMVectorGetZ(UpCorrected), XMVectorGetZ(Forward), 0.0f,
-        -XMVectorGetX(XMVector3Dot(Right, Eye)),
-        -XMVectorGetY(XMVector3Dot(UpCorrected, Eye)),
-        -XMVectorGetZ(XMVector3Dot(Forward, Eye)), 1.0f
-    );
-
-    float fovY = XM_PIDIV2; // 90 degrees field of view
-    float aspectRatio = width / (FLOAT)height;
-    float nearZ = 0.01f;
-    float farZ = 100.0f;
-
-    // Calculate parameters for perspective matrix
-    float f = 1.0f / tanf(fovY / 2.0f);
-    float q = farZ / (farZ - nearZ);
-
-    // Define the projection matrix directly
-    g_Projection = XMMatrixSet(
-        f / aspectRatio, 0.0f, 0.0f, 0.0f,
-        0.0f, f, 0.0f, 0.0f,
-        0.0f, 0.0f, q, 1.0f,
-        0.0f, 0.0f, -nearZ * q, 0.0f
-    );
+    g_View = XMMatrixLookAtLH(Eye, At, Up);
 
     // Initialize the projection matrix
-    /*g_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, width / (FLOAT)height, 0.01f, 100.0f);*/
+    g_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, width / (FLOAT)height, 0.01f, 100.0f);
 
     return S_OK;
 }
@@ -645,27 +600,24 @@ void Render()
             timeStart = timeCur;
         t = (timeCur - timeStart) / 1000.0f;
     }
-    // Animate the cube
-    g_World = XMMatrixRotationY(t);
 
+    //
+    // Animate the cube
+    //
+    g_World = XMMatrixRotationY(0.5f);
+
+    //
     // Clear the back buffer
+    //
     g_pImmediateContext->ClearRenderTargetView(g_pRenderTargetView, Colors::MidnightBlue);
 
+    //
     // Update variables
+    //
     ConstantBuffer cb;
-
-    g_World *= XMMatrixTranslation(0.0f, 0.0f, 0.0f);
-
-    // Initialize the world matrix
-    XMMATRIX mScale = XMMatrixScaling(1.0f, 0.1f, 1.0f);
-    g_World = XMMatrixIdentity();
-    g_World *= mScale;
-    cb.mWorld = XMMatrixTranspose(g_World);
-
     cb.mWorld = XMMatrixTranspose(g_World);
     cb.mView = XMMatrixTranspose(g_View);
     cb.mProjection = XMMatrixTranspose(g_Projection);
-
     g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, nullptr, &cb, 0, 0);
 
     //
@@ -674,22 +626,10 @@ void Render()
     g_pImmediateContext->VSSetShader(g_pVertexShader, nullptr, 0);
     g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer);
     g_pImmediateContext->PSSetShader(g_pPixelShader, nullptr, 0);
-    g_pImmediateContext->DrawIndexed(36, 0, 0);        // 36 vertices needed for 12 triangles in a triangle list
-
-
-    //// Set up the world matrix for the second cube
-    //g_World = XMMatrixIdentity();
-    //g_World *= XMMatrixTranslation(-2.8f, 0.0f, 0.0f); // Position of the second cube
-
-    //cb.mWorld = XMMatrixTranspose(g_World);
-    //g_pImmediateContext->UpdateSubresource(g_pConstantBuffer, 0, nullptr, &cb, 0, 0);
-
-    //// Render the second cube
-    //g_pImmediateContext->DrawIndexed(36, 0, 0); // Draw the second cube
+    g_pImmediateContext->DrawIndexed(indices.size(), 0, 0);        // 36 vertices needed for 12 triangles in a triangle list
 
     //
     // Present our back buffer to our front buffer
     //
     g_pSwapChain->Present(0, 0);
 }
-
