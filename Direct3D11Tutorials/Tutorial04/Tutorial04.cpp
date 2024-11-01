@@ -194,6 +194,146 @@ HRESULT CompileShaderFromFile(const WCHAR* szFileName, LPCSTR szEntryPoint, LPCS
     return S_OK;
 }
 
+void CreateSphere(float radius, UINT sliceCount, UINT stackCount, std::vector<SimpleVertex>& vertices, std::vector<WORD>& indices)
+{
+    int numVertices = (stackCount + 1) * (sliceCount + 1);
+    int numIndices = stackCount * sliceCount * 6;
+
+    vertices.resize(numVertices);
+    indices.resize(numIndices);
+
+    float phiStep = XM_PI / stackCount;
+    float thetaStep = XM_2PI / sliceCount;
+
+    for (int i = 0; i <= stackCount; ++i)
+    {
+        float phi = i * phiStep;
+
+        for (int j = 0; j <= sliceCount; ++j)
+        {
+            float theta = j * thetaStep;
+
+            SimpleVertex vertex;
+            vertex.Pos.x = radius * sinf(phi) * cosf(theta);
+            vertex.Pos.y = radius * cosf(phi);
+            vertex.Pos.z = radius * sinf(phi) * sinf(theta);
+
+            vertices[i * (sliceCount + 1) + j] = vertex;
+        }
+    }
+
+    int index = 0;
+    for (int i = 0; i < stackCount; ++i)
+    {
+        for (int j = 0; j < sliceCount; ++j)
+        {
+            indices[index] = i * (sliceCount + 1) + j;
+            indices[index + 1] = i * (sliceCount + 1) + j + 1;
+            indices[index + 2] = (i + 1) * (sliceCount + 1) + j;
+
+            indices[index + 3] = (i + 1) * (sliceCount + 1) + j;
+            indices[index + 4] = i * (sliceCount + 1) + j + 1;
+            indices[index + 5] = (i + 1) * (sliceCount + 1) + j + 1;
+
+            index += 6;
+        }
+    }
+}
+
+void CreateCylinder(float bottomRadius, float topRadius, float height, UINT sliceCount, UINT stackCount, std::vector<SimpleVertex>& vertices, std::vector<WORD>& indices)
+{
+	int numVertices = (stackCount + 1) * (sliceCount + 1);
+	int numIndices = stackCount * sliceCount * 6;
+
+	vertices.resize(numVertices);
+	indices.resize(numIndices);
+
+	float stackHeight = height / stackCount;
+	float radiusStep = (topRadius - bottomRadius) / stackCount;
+	UINT ringCount = stackCount + 1;
+
+	for (int i = 0; i < ringCount; ++i)
+	{
+		float y = -0.5f * height + i * stackHeight;
+		float r = bottomRadius + i * radiusStep;
+
+		float dTheta = 2.0f * XM_PI / sliceCount;
+		for (int j = 0; j <= sliceCount; ++j)
+		{
+			SimpleVertex vertex;
+			float c = cosf(j * dTheta);
+			float s = sinf(j * dTheta);
+
+			vertex.Pos = XMFLOAT3(r * c, y, r * s);
+
+			vertex.Color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+
+			vertices[i * (sliceCount + 1) + j] = vertex;
+		}
+	}
+
+	int ringVertexCount = sliceCount + 1;
+	int index = 0;
+	for (int i = 0; i < stackCount; ++i)
+	{
+		for (int j = 0; j < sliceCount; ++j)
+		{
+			indices[index] = i * ringVertexCount + j;
+			indices[index + 1] = (i + 1) * ringVertexCount + j;
+			indices[index + 2] = (i + 1) * ringVertexCount + j + 1;
+
+			indices[index + 3] = i * ringVertexCount + j;
+			indices[index + 4] = (i + 1) * ringVertexCount + j + 1;
+			indices[index + 5] = i * ringVertexCount + j + 1;
+
+			index += 6;
+		}
+	}
+
+    //add top face
+	int baseIndex = vertices.size();
+	float y = 0.5f * height;
+	float dTheta = 2.0f * XM_PI / sliceCount;
+	for (int i = 0; i <= sliceCount; ++i)
+	{
+		float x = topRadius * cosf(i * dTheta);
+		float z = topRadius * sinf(i * dTheta);
+
+		SimpleVertex vertex;
+		vertex.Pos = XMFLOAT3(x, y, z);
+		vertex.Color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+
+		vertices.push_back(vertex);
+	}
+
+	for (int i = 0; i < sliceCount; ++i)
+	{
+		indices[index] = baseIndex;
+		indices[index + 1] = baseIndex + i + 1;
+		indices[index + 2] = baseIndex + i + 2;
+
+		index += 3;
+	}
+
+	//add bottom face
+	baseIndex = vertices.size();
+	y = -0.5f * height;
+	for (int i = 0; i <= sliceCount; ++i)
+	{
+		float x = bottomRadius * cosf(i * dTheta);
+		float z = bottomRadius * sinf(i * dTheta);
+
+		SimpleVertex vertex;
+		vertex.Pos = XMFLOAT3(x, y, z);
+		vertex.Color = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+
+		vertices.push_back(vertex);
+	}
+
+    
+}
+
+
 
 //--------------------------------------------------------------------------------------
 // Create Direct3D device and swap chain
@@ -401,29 +541,34 @@ HRESULT InitDevice()
 
     //--------------------------------------------------------------------------------------
     // Create vertex buffer
+    //--------------------------------------------------------------------------------------
+	
     const int gridSize = 15;
     const float gridSpacing = 1.0f;
     float random = 0.0f;
     std::vector<SimpleVertex> vertices;
-    for (int i = -gridSize; i <= gridSize; ++i)
-    {
-        for (int j = -gridSize; j <= gridSize; ++j)
-        {
-            //vertices.push_back({ XMFLOAT3(i * gridSpacing, 0.0f, j * gridSpacing), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) });
+    //for (int i = -gridSize; i <= gridSize; ++i)
+    //{
+    //    for (int j = -gridSize; j <= gridSize; ++j)
+    //    {
+    //        vertices.push_back({ XMFLOAT3(i * gridSpacing, 0.0f, j * gridSpacing), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) });
 
-            // Add some random height to the vertices
-            random = (rand() % 100) / 100.0f;
-            if (random > 0.5f)
-            {
-                vertices.push_back({ XMFLOAT3(i * gridSpacing, 1.0f, j * gridSpacing), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) });
-            }
-            else
-            {
-                vertices.push_back({ XMFLOAT3(i * gridSpacing, 0.0f, j * gridSpacing), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) });
-            }
+    //        // Add some random height to the vertices
+    //        /*random = (rand() % 100) / 100.0f;
+    //        if (random > 0.5f)
+    //        {
+    //            vertices.push_back({ XMFLOAT3(i * gridSpacing, 1.0f, j * gridSpacing), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) });
+    //        }
+    //        else
+    //        {
+    //            vertices.push_back({ XMFLOAT3(i * gridSpacing, 0.0f, j * gridSpacing), XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f) });
+    //        }*/
 
-        }
-    }
+    //    }
+    //}
+
+    CreateSphere(1.0f, 20, 20, vertices, indices);
+	CreateCylinder(1.0f, 0.50f, 1.0f, 20, 20, vertices, indices);
 
     D3D11_BUFFER_DESC bd = {};
     bd.Usage = D3D11_USAGE_DEFAULT;
@@ -442,8 +587,8 @@ HRESULT InitDevice()
     UINT offset = 0;
     g_pImmediateContext->IASetVertexBuffers(0, 1, &g_pVertexBuffer, &stride, &offset);
 
-    // Create index buffer
-    for (int i = 0; i < gridSize * 2 + 1; ++i)
+    //Create index buffer
+    /*for (int i = 0; i < gridSize * 2 + 1; ++i)
     {
         for (int j = 0; j < gridSize * 2; ++j)
         {
@@ -460,22 +605,22 @@ HRESULT InitDevice()
             indices.push_back((i + 1) * (gridSize * 2 + 1) + j);
         }
 
-    }
+    }*/
 
     // Add indices for the line going through every cube
-    for (int i = 0; i < gridSize * 2; ++i)
-    {
-        for (int j = 0; j < gridSize * 2; ++j)
-        {
-            // Diagonal line of the square (top-left to bottom-right)
-            indices.push_back(i * (gridSize * 2 + 1) + j);
-            indices.push_back((i + 1) * (gridSize * 2 + 1) + j + 1);
+    //for (int i = 0; i < gridSize * 2; ++i)
+    //{
+    //    for (int j = 0; j < gridSize * 2; ++j)
+    //    {
+    //        // Diagonal line of the square (top-left to bottom-right)
+    //        indices.push_back(i * (gridSize * 2 + 1) + j);
+    //        indices.push_back((i + 1) * (gridSize * 2 + 1) + j + 1);
 
-            // Diagonal line of the square (top-right to bottom-left)
-            indices.push_back(i * (gridSize * 2 + 1) + j + 1);
-            indices.push_back((i + 1) * (gridSize * 2 + 1) + j);
-        }
-    }
+    //        // Diagonal line of the square (top-right to bottom-left)
+    //        indices.push_back(i * (gridSize * 2 + 1) + j + 1);
+    //        indices.push_back((i + 1) * (gridSize * 2 + 1) + j);
+    //    }
+    //}
 
     bd.Usage = D3D11_USAGE_DEFAULT;
     bd.ByteWidth = sizeof(WORD) * indices.size();
@@ -503,7 +648,7 @@ HRESULT InitDevice()
         return hr;
 
     g_pImmediateContext->RSSetState(wireframeRS);
-    // Create the constant buffer
+    //Create the constant buffer
     bd.Usage = D3D11_USAGE_DEFAULT;
     bd.ByteWidth = sizeof(ConstantBuffer);
     bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
@@ -516,7 +661,7 @@ HRESULT InitDevice()
     g_World = XMMatrixIdentity();
 
     // Initialize the view matrix
-    XMVECTOR Eye = XMVectorSet(0.0f, 15.0f, -10.0f, 0.0f);
+    XMVECTOR Eye = XMVectorSet(0.0f, 0.0f, 5.0f, 8.0f);
     XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
     g_View = XMMatrixLookAtLH(Eye, At, Up);
@@ -526,6 +671,9 @@ HRESULT InitDevice()
 
     return S_OK;
 }
+
+//create a sphere
+
 
 
 //--------------------------------------------------------------------------------------
